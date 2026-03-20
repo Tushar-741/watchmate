@@ -3,6 +3,8 @@ from watchlist_app.API import serializers
 from watchlist_app.models import Watchlist ,StreamPlatform,Review
 from watchlist_app.API.serializers import WatchListSerializer,StreamPlatformSerializer,ReviewSerializer
 
+from rest_framework.throttling import UserRateThrottle,AnonRateThrottle
+
 from rest_framework.response import Response
 # from rest_framework.decorators import api_view
 # from rest_framework import mixins
@@ -12,9 +14,13 @@ from rest_framework import generics
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated,IsAuthenticatedOrReadOnly
-from watchlist_app.API.permissions import AdminOrReadOnly,ReviewUserOrReadOnly
+from watchlist_app.API.permissions import IsAdminOrReadOnly,IsReviewUserOrReadOnly
+from watchlist_app.API.throttling import ReviewCreateThrottle,ReviewListThrottle
 
 class ReviewCreate(generics.CreateAPIView):
+    permission_classes = [IsAuthenticated]
+    
+    throttle_classes = [ReviewCreateThrottle]
     serializer_class = ReviewSerializer
     def get_queryset(self):
         return Review.objects.all()
@@ -38,17 +44,22 @@ class ReviewCreate(generics.CreateAPIView):
         serializer.save(watchlist=watchlist,review_user=review_user)
         
 class ReviewList(generics.ListCreateAPIView):
-    permission_classes = [IsAuthenticated]
+    #permission_classes = [IsAuthenticated]
     #queryset = Review.objects.all()
     serializer_class = ReviewSerializer
     def get_queryset(self):
         pk=self.kwargs['pk']
         return Review.objects.filter(watchlist=pk)
     
+    throttle_classes = [ReviewListThrottle]
+    
 class ReviewDetail(generics.RetrieveUpdateDestroyAPIView):
-    permission_classes = [ReviewUserOrReadOnly]
+    permission_classes = [IsReviewUserOrReadOnly]
+    
     queryset = Review.objects.all()
     serializer_class = ReviewSerializer
+    
+    throttle_classes = [UserRateThrottle,AnonRateThrottle]
     
     
     
@@ -73,6 +84,8 @@ class ReviewDetail(generics.RetrieveUpdateDestroyAPIView):
 #     def post(self, request, *args, **kwargs):
 #         return self.create(request, *args, **kwargs)
 class StreamPlatformVS(viewsets.ModelViewSet):
+    permission_class=[IsAdminOrReadOnly]
+    
     queryset = StreamPlatform.objects.all()
     serializer_class = StreamPlatformSerializer
 # class StreamPlatformVS(viewsets.ViewSet):
@@ -97,6 +110,8 @@ class StreamPlatformVS(viewsets.ModelViewSet):
         
 
 class StreamPlatformAV(APIView):
+    permission_class=[IsAdminOrReadOnly]
+    
     def get(self,request):
         platform=StreamPlatform.objects.all()
         serializer=StreamPlatformSerializer(platform,many=True)
@@ -110,6 +125,8 @@ class StreamPlatformAV(APIView):
             return Response(serializer.errors)
         
 class StreamPlatformDetailAV(APIView):
+    permission_class=[IsAdminOrReadOnly]
+    
     def get(self,request,pk):
         try:
             platform=StreamPlatform.objects.get(pk=pk)
@@ -129,6 +146,8 @@ class StreamPlatformDetailAV(APIView):
         
         
 class WatchListAV(APIView):
+    permission_class=[IsAdminOrReadOnly]
+    
     def get(self,request):
         movies=Watchlist.objects.all()
         serializer=WatchListSerializer(movies,many=True)
@@ -155,6 +174,8 @@ class WatchDetailAV(APIView):
         serializer=WatchListSerializer(movie)
         return Response(serializer.data)
     def put(self,request,pk):
+        permission_class=[IsAdminOrReadOnly]
+        
         movie=Watchlist.objects.get(pk=pk)
         serializer=WatchListSerializer(movie,data=request.data)
         if serializer.is_valid():
@@ -163,6 +184,8 @@ class WatchDetailAV(APIView):
         else:
             return Response(serializer.errors)
     def delete(self,request,pk):
+        permission_class=[IsAdminOrReadOnly]
+        
         movie=Watchlist.objects.get(pk=pk)
         movie.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)

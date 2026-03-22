@@ -3,7 +3,9 @@ from watchlist_app.API import serializers
 from watchlist_app.models import Watchlist ,StreamPlatform,Review
 from watchlist_app.API.serializers import WatchListSerializer,StreamPlatformSerializer,ReviewSerializer
 
-from rest_framework.throttling import UserRateThrottle,AnonRateThrottle
+from django_filters.rest_framework import DjangoFilterBackend
+
+from rest_framework.throttling import UserRateThrottle,AnonRateThrottle,ScopedRateThrottle
 
 from rest_framework.response import Response
 # from rest_framework.decorators import api_view
@@ -16,6 +18,22 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated,IsAuthenticatedOrReadOnly
 from watchlist_app.API.permissions import IsAdminOrReadOnly,IsReviewUserOrReadOnly
 from watchlist_app.API.throttling import ReviewCreateThrottle,ReviewListThrottle
+
+from rest_framework import filters
+
+class UserReview(generics.ListCreateAPIView):
+    #permission_classes = [IsAuthenticated]
+    #queryset = Review.objects.all()
+    serializer_class = ReviewSerializer
+    
+    # def get_queryset(self):
+    #     username=self.kwargs['username']
+    #     return Review.objects.filter(review_user__username=username)
+    
+    # throttle_classes = [ReviewListThrottle]
+    def get_queryset(self): 
+        username = self.request.query_params.get('username')
+        return Review.objects.filter(review_user__username=username)
 
 class ReviewCreate(generics.CreateAPIView):
     permission_classes = [IsAuthenticated]
@@ -53,13 +71,17 @@ class ReviewList(generics.ListCreateAPIView):
     
     throttle_classes = [ReviewListThrottle]
     
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['review_user__username', 'active']
+    
 class ReviewDetail(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsReviewUserOrReadOnly]
     
     queryset = Review.objects.all()
     serializer_class = ReviewSerializer
     
-    throttle_classes = [UserRateThrottle,AnonRateThrottle]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope="review-detail"
     
     
     
@@ -143,6 +165,16 @@ class StreamPlatformDetailAV(APIView):
             return Response(serializer.data)
         else:
             return Response(serializer.errors,status=status.HTTP_400_BAD_REQUEST)
+        
+        
+class WatchlistGV(generics.ListCreateAPIView):
+    
+    queryset = Watchlist.objects.all()
+    serializer_class = WatchListSerializer
+    #filter_backends = [filters.SearchFilter]
+    #search_fields = ['^title', 'platform__name']
+    filter_backends = [filters.OrderingFilter]
+    ordering_fields = ['avg_rating']
         
         
 class WatchListAV(APIView):

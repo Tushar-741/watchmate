@@ -18,7 +18,7 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated,IsAuthenticatedOrReadOnly
 from watchlist_app.API.permissions import IsAdminOrReadOnly,IsReviewUserOrReadOnly
 from watchlist_app.API.throttling import ReviewCreateThrottle,ReviewListThrottle
-
+from watchlist_app.API.pagination import WatchListPaginaation,WatchListLOPaginaation,CursorPagination 
 from rest_framework import filters
 
 class UserReview(generics.ListCreateAPIView):
@@ -168,9 +168,11 @@ class StreamPlatformDetailAV(APIView):
         
         
 class WatchlistGV(generics.ListCreateAPIView):
-    
+    #example view
     queryset = Watchlist.objects.all()
     serializer_class = WatchListSerializer
+    pagination_class=WatchListLOPaginaation
+    #pagination_class=CursorPagination
     #filter_backends = [filters.SearchFilter]
     #search_fields = ['^title', 'platform__name']
     filter_backends = [filters.OrderingFilter]
